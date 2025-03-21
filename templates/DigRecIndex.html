@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwritten Digit Recognition App</title>
+</head>
+<body>
+    <h1>Handwritten Digit Recognition using a Neural Network</h1>
+    <h2>By Sage Walsh Smith</h2>
+    <h3>Submit a png of a handwritten digit (0-9) and have the Neural Network predict the value</h3>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" id="file" name="file" accept="image/*" required>
+        <button type="submit">Upload Image</button>
+    </form>
+    
+    <h2 id="prediction"></h2>
+    <h3>Prediction Confidence: <span id="confidence"></span></h3>
+    <h3>Submitted Image:</h3>
+    <img id="uploaded-image" src="" alt="Uploaded Image" style="max-width: 500px; height: auto;">
+    
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData();
+            formData.append("file", document.getElementById('file').files[0]);
+            
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert(data.error);
+            } else {
+                // Update the UI with prediction and image
+                document.getElementById('prediction').textContent = `Predicted Digit: ${data.predicted_digit}`;
+                document.getElementById('confidence').textContent = `${data.confidence.toFixed(2) * 100}%`;
+                
+                // Display the uploaded image by setting the src to the base64 string
+                const imgSrc = `data:image/png;base64,${data.image}`;
+                document.getElementById('uploaded-image').src = imgSrc;
+            }
+        });
+    </script>
+</body>
+</html>
