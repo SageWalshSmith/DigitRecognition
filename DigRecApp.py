@@ -1,27 +1,20 @@
 #in terminal:
 #>python DigRecApp.py to start
 #CTRL + C to stop
-import os
-import numpy as np
-import tensorflow as tf
 from flask import Flask, request, jsonify, render_template
+import tensorflow as tf
+import numpy as np
 from tensorflow.keras.preprocessing import image
 import io
 import base64
+from PIL import Image
+import os
 
 # Initialize the Flask application
 app = Flask(__name__)
 
-# Define the path for saving uploaded files (if you want to save them)
-#UPLOAD_FOLDER = 'uploads'  # You can set any folder here where you want to save the uploaded files
-#app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Ensure the upload folder exists
-#if not os.path.exists(UPLOAD_FOLDER):
-#    os.makedirs(UPLOAD_FOLDER)
-
-# call previously saved model
-model_path = 'handwritten.keras'  
+# Load your pre-trained model
+model_path = 'handwritten.keras'
 if not os.path.exists(model_path):
     raise ValueError(f"Model file not found: {model_path}")
 model = tf.keras.models.load_model(model_path)  # Load the model
@@ -34,40 +27,41 @@ def home():
 # Predict route - handles image upload and prediction
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Check if 'file' is in the request
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400  # If no file is uploaded
-    
-    file = request.files['file']
-
-    # If no file is selected, return an error
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
     try:
-        #process user submitted image to be read by the model:
-        # Convert the uploaded file into a file-like object using BytesIO
-        img = image.load_img(io.BytesIO(file.read()), target_size=(28, 28), color_mode='grayscale')  # Convert FileStorage to BytesIO
-
+        # Check if the image is coming from canvas or file upload
+        if request.content_type == 'application/json':
+            data = request.get_json()
+            base64_image = data['image']
+            img_type = data.get('type', 'file')
+            
+            if img_type == 'canvas':
+                img_data = base64.b64decode(base64_image)
+                img = Image.open(io.BytesIO(img_data))
+                img = img.convert('L')  # Convert to grayscale
+                img = img.resize((28, 28))  # Resize to 28x28 pixels
+            else:
+                raise ValueError("Unknown image type")
+        elif 'file' in request.files:
+            file = request.files['file']
+            img = Image.open(file)
+            img = img.convert('L')  # Convert to grayscale
+            img = img.resize((28, 28))  # Resize to 28x28 pixels
+        
         # Convert the image to a numpy array
-        img_array = image.img_to_array(img)
+        img_array = np.array(img)
 
-        # Convert to integer type for inversion
-        img_array = img_array.astype(np.uint8)
-
-        # Invert the image (white becomes black and vice versa)
-        img_array = np.invert(img_array)
-
-        # Add an extra dimension to simulate a batch of size 1 (model expects this)
-        img_array = np.expand_dims(img_array, axis=0)
+        # Invert the colors (white becomes black and vice versa)
+        img_array = 255 - img_array  # Invert image (white becomes black and vice versa)
 
         # Normalize the image (scale pixel values between 0 and 1)
-        img_array = img_array / 255.0
+        img_array = img_array.astype(np.float32) / 255.0
 
-        # Make a prediction with the model
+        # Reshape to (1, 28, 28, 1) to match the model input shape
+        img_array = np.expand_dims(img_array, axis=-1)  # Add the channel dimension (grayscale)
+        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+
+        # Make prediction with the model
         prediction = model.predict(img_array)
-        
-        # Get the predicted digit (most probable digit)
         predicted_digit = np.argmax(prediction)
 
         # Convert the image to base64 for displaying in the HTML page

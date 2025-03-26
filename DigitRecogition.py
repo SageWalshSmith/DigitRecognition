@@ -79,19 +79,19 @@ model.save('handwritten.keras')
 model = tf.keras.models.load_model('handwritten.keras')
 
 #return values(for model evaluation):
-loss, accuracy = model.evaluate(x_test, y_test)
-print(loss)
-print(accuracy)
+#loss, accuracy = model.evaluate(x_test, y_test)
+#print(loss)
+#print(accuracy)
 
 #build a function that lets the model iterate through
 #our own handwritten digits
 #initialize variable image_number
 image_number = 1
 #"While there is a file at the following path..."
-while os.path.isfile(f"digits/digit{image_number}.png"):
+while os.path.isfile(f"Digits/Digit{image_number}.png"):
     #read the file
     #[:,:,0] -> we are only reading the grayscale value
-    img = cv2.imread(f"digits/digit{image_number}.png")[:,:,0]
+    img = cv2.imread(f"Digits/Digit{image_number}.png")[:,:,0]
     #invert the file (since MNIST images are white on black, and we want black on white) 
     # & convert it to an array
     img = np.invert(np.array([img]))
@@ -99,6 +99,7 @@ while os.path.isfile(f"digits/digit{image_number}.png"):
     prediction = model.predict(img)
     #print output
     print(f"This digit is probably a {np.argmax(prediction)}")
+    print(image_number)
     #show png
     plt.imshow(img[0],cmap=plt.cm.binary)
     plt.show()
