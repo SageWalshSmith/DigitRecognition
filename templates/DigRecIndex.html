@@ -5,247 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Handwritten Digit Recognition App</title>
     <style>
-        /* Styling for the drawing canvas */
-        #drawing-canvas {
-            border: 1px solid #000;
-            width: 280px; /* 28x28 px scaled by 10 (for better drawing precision) */
-            height: 280px; /* 28x28 px scaled by 10 (for better drawing precision) */
-            background-color: white;
+        /* Styling for the grid */
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(28, 20px); /* 28 cells per row */
+            grid-template-rows: repeat(28, 20px); /* 28 rows */
+            gap: 1px; /* Space between cells */
+            margin: 20px auto;
+            width: 600px;
         }
 
-        /* Styling for history section */
-        #history-container {
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: scroll;
+        .grid-cell {
+            width: 20px;
+            height: 20px;
+            background-color: white;
             border: 1px solid #ddd;
-            padding: 10px;
+            cursor: pointer;
+        }
+
+        /* Styling for the buttons */
+        #clear-canvas, #submit-drawing {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        /* Styling for the prediction area */
+        #prediction, #confidence {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* History Section */
+        #history-container {
+            margin-top: 30px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .history-item {
-            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
         }
 
         .history-item img {
-            max-width: 100px;
-            max-height: 100px;
+            width: 50px;
+            height: 50px;
             margin-right: 10px;
         }
 
         .history-item p {
-            display: inline-block;
-            vertical-align: top;
-            font-size: 16px;
-            margin-top: 10px;
+            margin: 0;
         }
 
-        .history-item input[type="checkbox"] {
+        .history-item label {
             margin-left: 10px;
         }
 
-        /* Styling for accuracy display */
-        #accuracy-display {
-            margin-top: 10px;
+        #accuracy {
             font-size: 18px;
             font-weight: bold;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <h1>Handwritten Digit Recognition using a Neural Network</h1>
     <h2>By Sage Walsh Smith</h2>
-    <h3>Draw a digit (0-9) or upload an image to submit for prediction</h3>
+    <h3>Fill in the grid to draw a digit (0-9) or upload an image for prediction</h3>
 
-    <!-- Drawing canvas -->
-    <canvas id="drawing-canvas"></canvas><br>
+    <!-- 28x28 Grid -->
+    <div id="grid-container"></div>
+
     <button id="clear-canvas">Clear</button>
     <button id="submit-drawing">Submit Drawing</button>
 
-    <h3>Image Upload:</h3>
+    <h2 id="prediction"></h2>
+    <h3>Prediction Confidence: <span id="confidence"></span></h3>
+
+    <!-- History Section -->
+    <h3>History of Predictions:</h3>
+    <div id="history-container">
+    </div>
+
+    <!-- Upload Image Section -->
+    <h3>Upload Image:</h3>
     <form id="upload-form" enctype="multipart/form-data">
         <input type="file" id="file" name="file" accept="image/*" required>
         <button type="submit">Upload Image</button>
     </form>
 
-    <h2 id="prediction"></h2>
-    <h3>Current Prediction Confidence: <span id="confidence"></span></h3>
-    <h3>Current Submitted Image:</h3>
-    <img id="uploaded-image" src="" alt="Uploaded Image" style="max-width: 500px; height: auto;">
-
-    <!-- History section -->
-    <h3>Previous Submissions:</h3>
-    <h4>tick box if the model predicted your digit correctly to display model accuracy</h4>
-
     <!-- Accuracy Display -->
-    <div id="accuracy-display">
-        Accuracy: <span id="accuracy">0%</span>
-    </div>
+    <h3 id="accuracy">Model Accuracy: 0%</h3>
 
-    <div id="history-container">
-        <!-- History items will be appended here -->
-    </div>
-    
-    <script>
-        // Setup the canvas for drawing
-        const canvas = document.getElementById('drawing-canvas');
-        const ctx = canvas.getContext('2d');
-        const clearButton = document.getElementById('clear-canvas');
-        const submitButton = document.getElementById('submit-drawing');
-        
-        const canvasWidth = 280; // 28x28 px scaled by 10 (for better drawing precision)
-        const canvasHeight = 280; // 28x28 px scaled by 10 (for better drawing precision)
-
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        
-        // Initialize the canvas with a white background
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-        let drawing = false;
-
-        // Start drawing
-        canvas.addEventListener('mousedown', (e) => {
-            drawing = true;
-            draw(e);
-        });
-
-        // Draw on the canvas
-        canvas.addEventListener('mousemove', (e) => {
-            if (drawing) {
-                draw(e);
-            }
-        });
-
-        // Stop drawing
-        canvas.addEventListener('mouseup', () => {
-            drawing = false;
-        });
-
-        // Draw function
-        function draw(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            ctx.fillStyle = 'black';
-            ctx.fillRect(x - 5, y - 5, 10, 10); // Draw a larger square for the pixel (scaled by 10)
-        }
-
-        // Clear canvas function
-        clearButton.addEventListener('click', () => {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-        });
-
-        // Store history of submissions
-        let history = [];
-        let correctCount = 0; // Tracks the number of correct predictions marked by user
-        let totalCount = 0;   // Tracks the total number of submissions
-
-        // Submit the drawing from the canvas
-        submitButton.addEventListener('click', async () => {
-            // Convert to 28x28 pixels (resize the image down to match model input size)
-            const imageData = canvas.toDataURL('image/png');
-            const base64Image = imageData.split(',')[1]; // Extract the base64 string from the image data URL
-            
-            const response = await fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64Image, type: 'canvas' }) // Send the base64 image string with a type flag
-            });
-
-            const data = await response.json();
-            
-            if (data.error) {
-                alert(data.error);
-            } else {
-                // Update the UI with prediction and image
-                document.getElementById('prediction').textContent = `Predicted Digit: ${data.predicted_digit}`;
-                document.getElementById('confidence').textContent = `${data.confidence.toFixed(2) * 100}%`;
-
-                // Display the uploaded image by setting the src to the base64 string
-                const imgSrc = `data:image/png;base64,${data.image}`;
-                document.getElementById('uploaded-image').src = imgSrc;
-
-                // Add the new submission to the history
-                addHistoryItem(data.predicted_digit, data.confidence, imgSrc, data.digit);  // Pass the actual digit
-            }
-        });
-
-        // Handle file upload
-        document.getElementById('upload-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            
-            const formData = new FormData();
-            formData.append("file", document.getElementById('file').files[0]);
-            
-            const response = await fetch('/predict', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                alert(data.error);
-            } else {
-                // Update the UI with prediction and image
-                document.getElementById('prediction').textContent = `Predicted Digit: ${data.predicted_digit}`;
-                document.getElementById('confidence').textContent = `${data.confidence.toFixed(2) * 100}%`;
-                
-                // Display the uploaded image by setting the src to the base64 string
-                const imgSrc = `data:image/png;base64,${data.image}`;
-                document.getElementById('uploaded-image').src = imgSrc;
-
-                // Add the new submission to the history
-                addHistoryItem(data.predicted_digit, data.confidence, imgSrc, data.digit);  // Pass the actual digit
-            }
-        });
-
-        // Add the history item to the history section
-        function addHistoryItem(predictedDigit, confidence, imgSrc, actualDigit) {
-            // Create a new history item
-            const historyItem = document.createElement('div');
-            historyItem.classList.add('history-item');
-            
-            // Create image element
-            const img = document.createElement('img');
-            img.src = imgSrc;
-            
-            // Create prediction and confidence text
-            const text = document.createElement('p');
-            text.textContent = `Predicted: ${predictedDigit}, Confidence: ${(confidence * 100).toFixed(2)}%`;
-
-            // Create checkbox for correctness selection
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.addEventListener('change', () => {
-                if (checkbox.checked) {
-                    // User marks it as correct
-                    correctCount++;
-                } else {
-                    // User unmarks it as correct
-                    correctCount--;
-                }
-                updateAccuracy();
-            });
-
-            // Append the image, text, and checkbox to the history item
-            historyItem.appendChild(img);
-            historyItem.appendChild(text);
-            historyItem.appendChild(checkbox);
-
-            // Append the history item to the history container
-            document.getElementById('history-container').prepend(historyItem); // Prepend to show the latest first
-            totalCount++; // Increase total count with each submission
-        }
-
-        // Update accuracy display
-        function updateAccuracy() {
-            const accuracy = totalCount === 0 ? 0 : (correctCount / totalCount) * 100;
-            document.getElementById('accuracy').textContent = `${accuracy.toFixed(2)}%`;
-        }
-    </script>
+    <script src="{{ url_for('static', filename='DigRec.js') }}"></script>
 </body>
 </html>

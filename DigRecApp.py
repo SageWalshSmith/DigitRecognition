@@ -28,7 +28,7 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Check if the image is coming from canvas or file upload
+        # Check if the image is coming from canvas (base64) or file upload
         if request.content_type == 'application/json':
             data = request.get_json()
             base64_image = data['image']

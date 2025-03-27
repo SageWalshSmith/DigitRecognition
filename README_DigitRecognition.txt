@@ -5,6 +5,9 @@ https://www.youtube.com/watch?v=bte8Er0QhDg
 MNIST Dataset - TensorFlow
 https://www.tensorflow.org/datasets/catalog/mnist
 
+Handwritten Digit Recognition Neural Network
+neural network for handwritten digit recognition, leveraging machine learning to predict digits drawn or uploaded by users. Built with Python (neural network and backend), JavaScript (for frontend interactivity), and HTML/CSS (for web layout), it tracks model accuracy and stores prediction data for analytics.
+
 Instructions to run the Digit Recognition program:
 1. in Command prop:
 pip install numpy
