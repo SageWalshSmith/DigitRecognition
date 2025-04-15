@@ -1,104 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Handwritten Digit Recognition App</title>
     <style>
-        /* Styling for the grid */
-        #grid-container {
-            display: grid;
-            grid-template-columns: repeat(28, 20px); /* 28 cells per row */
-            grid-template-rows: repeat(28, 20px); /* 28 rows */
-            gap: 1px; /* Space between cells */
-            margin: 20px auto;
-            width: 600px;
-        }
+        body {
+    background-color: #000;
+    color: #00ff00;
+    font-family: 'Press Start 2P', monospace;
+    margin: 0;
+    padding: 20px;
+}
 
-        .grid-cell {
-            width: 20px;
-            height: 20px;
-            background-color: white;
-            border: 1px solid #ddd;
-            cursor: pointer;
-        }
+    h1, h2, h3 {
+        color: #00ff00;
+        text-shadow: 0 0 2px #0f0;
+        text-align: center;
+    }
 
-        /* Styling for the buttons */
-        #clear-canvas, #submit-drawing {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
+    #grid-container {
+        display: grid;
+        grid-template-columns: repeat(28, 20px);
+        grid-template-rows: repeat(28, 20px);
+        gap: 1px;
+        margin: 20px auto;
+        width: fit-content;
+        background-color: #000;
+        padding: 10px;
+        border: 2px solid #0f0;
+    }
 
-        /* Styling for the prediction area */
-        #prediction, #confidence {
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: bold;
-        }
+    .grid-cell {
+        width: 20px;
+        height: 20px;
+        background-color: black;
+        border: 1px solid #00ff00;
+        box-sizing: border-box;
+    }
 
-        /* History Section */
-        #history-container {
-            margin-top: 30px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
+    .grid-cell.drawn {
+        background-color: white;
+    }
 
-        .history-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
+    button, input[type="file"], form button {
+        background-color: black;
+        color: #00ff00;
+        border: 2px solid #00ff00;
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 10px;
+        cursor: pointer;
+        font-family: 'Courier New', Courier, monospace;
+    }
 
-        .history-item img {
-            width: 50px;
-            height: 50px;
-            margin-right: 10px;
-        }
+    button:hover, input[type="file"]:hover {
+        background-color: #00ff00;
+        color: black;
+    }
 
-        .history-item p {
-            margin: 0;
-        }
+    #accuracy {
+        margin-top: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #00ff00;
+    }
 
-        .history-item label {
-            margin-left: 10px;
-        }
+    #prediction, #confidence {
+    margin-top: 10px;
+    font-size: 16px;
+    text-align: left;
+    }
 
-        #accuracy {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
+    #history-container {
+        margin-top: 30px;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #0f0;
+        padding: 10px;
+    }
+
+    .history-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        border-bottom: 1px dashed #0f0;
+        padding-bottom: 5px;
+    }
+
+    .history-item img {
+        width: 50px;
+        height: 50px;
+        margin-right: 10px;
+        border: 1px solid #00ff00;
+    }
+
+    .history-item p, .history-item label {
+        margin: 0;
+        color: #0f0;
+    }
+
+    label input[type="checkbox"] {
+        margin-right: 5px;
+    }
+
+    input[type="file"] {
+        color: #00ff00;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    #main-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    margin: 40px auto;
+    max-width: 1400px;
+    padding: 0 20px;
+    text-align: left; /* Prevent inherited center alignment */
+    }
+    
+    #left-panel, #right-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        flex: 1;
+        max-width: 50%;
+        box-sizing: border-box;
+    }
+
+    #left-panel > * {
+    margin-bottom: 15px;
+    }
+
+    #left-panel button {
+    margin-bottom: 10px;
+    }
+
+    #grid-container {
+    display: grid;
+    grid-template-columns: repeat(28, 14px);
+    grid-template-rows: repeat(28, 14px);
+    gap: 1px;
+    margin: 10px 0;
+    width: fit-content;
+    }
+
+    #history-container {
+    max-height: 500px;
+    overflow-y: auto;
+    }
     </style>
 </head>
 <body>
     <h1>Handwritten Digit Recognition using a Neural Network</h1>
     <h2>By Sage Walsh Smith</h2>
-    <h3>Fill in the grid to draw a digit (0-9) or upload an image for prediction</h3>
 
-    <!-- 28x28 Grid -->
-    <div id="grid-container"></div>
+    <!-- FLEX CONTAINER -->
+    <div id="main-container">
+        <!-- LEFT PANEL -->
+        <div id="left-panel">
+            <h3>Draw a digit (0-9):</h3>
+            <div id="grid-container"></div>
+            <button id="clear-canvas">Clear</button>
+            <button id="submit-drawing">Submit Drawing</button>
 
-    <button id="clear-canvas">Clear</button>
-    <button id="submit-drawing">Submit Drawing</button>
+            <h2 id="prediction"></h2>
+            <h3>Confidence: <span id="confidence"></span></h3>
+        </div>
 
-    <h2 id="prediction"></h2>
-    <h3>Prediction Confidence: <span id="confidence"></span></h3>
+        <!-- RIGHT PANEL -->
+        <div id="right-panel">
+            <h3>Prediction History:</h3>
+            <div id="history-container"></div>
 
-    <!-- History Section -->
-    <h3>History of Predictions:</h3>
-    <div id="history-container">
+            <h3>Upload Image:</h3>
+            <form id="upload-form" enctype="multipart/form-data">
+                <input type="file" id="file" name="file" accept="image/*" required>
+                <button type="submit">Upload Image</button>
+            </form>
+
+            <h3 id="accuracy">Model Accuracy: 0%</h3>
+        </div>
     </div>
-
-    <!-- Upload Image Section -->
-    <h3>Upload Image:</h3>
-    <form id="upload-form" enctype="multipart/form-data">
-        <input type="file" id="file" name="file" accept="image/*" required>
-        <button type="submit">Upload Image</button>
-    </form>
-
-    <!-- Accuracy Display -->
-    <h3 id="accuracy">Model Accuracy: 0%</h3>
 
     <script src="{{ url_for('static', filename='DigRec.js') }}"></script>
 </body>

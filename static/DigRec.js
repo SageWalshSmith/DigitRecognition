@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function drawOnCell(e, cell) {
         if (drawing) {
             const target = e.target;
-            target.style.backgroundColor = 'black'; // Simulate drawing with black color
+            target.classList.add('drawn');
+            target.style.backgroundColor = '#00ff00'; // Green for retro look // Apply 'drawn' class for white color
         }
     }
 
@@ -47,39 +48,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clear the grid
     clearButton.addEventListener('click', () => {
         cells.forEach(cell => {
-            cell.style.backgroundColor = 'white';  // Reset all cells to white
+            cell.classList.remove('drawn');  // Clear all drawings
+            cell.style.backgroundColor = 'black'; // Reset to black background
         });
     });
 
-    // Submit the drawing
-    submitButton.addEventListener('click', async () => {
-        const gridData = getGridData();
-        const base64Image = convertGridToBase64(gridData);
-
-        const response = await fetch('/predict', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Image, type: 'canvas' }) // Change to 'canvas'
-        });
-
-        const data = await response.json();
-        if (data.error) {
-            alert(data.error);
-        } else {
-            // Update UI with the prediction and confidence
-            document.getElementById('prediction').textContent = `Predicted Digit: ${data.predicted_digit}`;
-            document.getElementById('confidence').textContent = `${(data.confidence * 100).toFixed(2)}%`;
-
-            // Add the new submission to the history
-            addHistoryItem(data.predicted_digit, data.confidence, base64Image, data.predicted_digit);
-        }
-    });
+    
 
     // Get the 28x28 grid data (black/white pixel values)
     function getGridData() {
         const gridData = [];
         cells.forEach(cell => {
-            gridData.push(cell.style.backgroundColor === 'black' ? 1 : 0);
+            gridData.push(cell.classList.contains('drawn') ? 1 : 0);
         });
         return gridData;
     }
@@ -88,36 +68,108 @@ document.addEventListener('DOMContentLoaded', () => {
     function convertGridToBase64(gridData) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const cellSize = 10;  // Each grid cell is a 10x10 pixel block
-
+        const cellSize = 10;
+    
         canvas.width = gridSize * cellSize;
         canvas.height = gridSize * cellSize;
-
-        // Fill in the canvas with the grid data (black or white cells)
+    
+        // Fill canvas with white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+        // Draw digit (black pixels)
         gridData.forEach((value, index) => {
             const x = (index % gridSize) * cellSize;
             const y = Math.floor(index / gridSize) * cellSize;
-
-            ctx.fillStyle = value === 1 ? 'black' : 'white';
-            ctx.fillRect(x, y, cellSize, cellSize);
+    
+            if (value === 1) {
+                ctx.fillStyle = 'black'; // Digit is drawn in black
+                ctx.fillRect(x, y, cellSize, cellSize);
+            }
         });
-
-        return canvas.toDataURL('image/png').split(',')[1]; // Return base64 string (without the header part)
+    
+        return canvas.toDataURL('image/png').split(',')[1];
     }
-
+    submitButton.addEventListener('click', async () => {
+        const gridData = getGridData();
+        const base64Image = convertGridToBase64(gridData);
+    
+        // 🔍 Set the model input preview
+        //const previewImg = document.getElementById('model-preview');
+        //previewImg.src = `data:image/png;base64,${base64Image}`;
+    
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image, type: 'canvas' })
+        });
+    
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+        } else {
+            document.getElementById('prediction').textContent = `Predicted Digit: ${data.predicted_digit}`;
+            document.getElementById('confidence').textContent = `${(data.confidence * 100).toFixed(2)}%`;
+    
+            addHistoryItem(data.predicted_digit, data.confidence, base64Image, data.predicted_digit);
+        }
+    });
     // Add history item to the history section
     function addHistoryItem(predictedDigit, confidence, imgBase64, correctDigit) {
         const historyContainer = document.getElementById('history-container');
         const historyItem = document.createElement('div');
         historyItem.classList.add('history-item');
-
-        const img = document.createElement('img');
+    
+        // Create a canvas to transform the image colors
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const img = new Image();
+        img.onload = function () {
+            // Set the canvas size to match the image size
+            canvas.width = img.width;
+            canvas.height = img.height;
+    
+            // Draw the image onto the canvas
+            ctx.drawImage(img, 0, 0);
+    
+            // Get the image data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+    
+            // Loop through all pixels and modify the colors
+            for (let i = 0; i < data.length; i += 4) {
+                // If the pixel is white (255, 255, 255), change it to green (0, 255, 0)
+                if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
+                    data[i] = 0; // Red (0)
+                    data[i + 1] = 0; // Green (255)
+                    data[i + 2] = 0; // Blue (0)
+                } else if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
+                    // If the pixel is black (0, 0, 0), keep it black
+                    data[i] = 0;
+                    data[i + 1] = 255;
+                    data[i + 2] = 0;
+                }
+            }
+    
+            // Put the modified image data back onto the canvas
+            ctx.putImageData(imageData, 0, 0);
+    
+            // Create a new image element for the modified image
+            const modifiedImg = document.createElement('img');
+            modifiedImg.src = canvas.toDataURL(); // Set the source to the new canvas data URL
+    
+            // Append the modified image to the history item
+            historyItem.appendChild(modifiedImg);
+        };
+    
+        // Set the image source (base64 encoded image)
         img.src = `data:image/png;base64,${imgBase64}`;
-        historyItem.appendChild(img);
-
+    
+        // Add the prediction text to the history item
         const text = document.createElement('p');
         text.textContent = `Predicted: ${predictedDigit}, Confidence: ${(confidence * 100).toFixed(2)}%`;
-
+    
         // Add checkbox for marking the prediction as correct
         const checkboxLabel = document.createElement('label');
         const checkbox = document.createElement('input');
@@ -127,14 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         checkboxLabel.appendChild(checkbox);
         checkboxLabel.appendChild(document.createTextNode(' Correct prediction'));
-
+    
         historyItem.appendChild(text);
         historyItem.appendChild(checkboxLabel);
         historyContainer.prepend(historyItem);
-
+    
         // Update the total predictions count
         totalPredictions++;
-
+    
         // Update the accuracy display
         updateAccuracy();
     }
